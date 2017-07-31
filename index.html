@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <script src="js/obstacle.js"></script>
+    <script src="js/turtle.js"></script>
+    <script src="js/game.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+	<title>Turtle Game</title>
+</head>
+<script type="text/javascript">
+    window.requestAnimFrame = (function() {
+      return window.requestAnimationFrame ||
+             window.webkitRequestAnimationFrame ||
+             window.mozRequestAnimationFrame ||
+             window.oRequestAnimationFrame ||
+             window.msRequestAnimationFrame ||
+             function(/* function FrameRequestCallback */ callback, /* DOMElement Element */ element) {
+               window.setTimeout(callback, 1000/60);
+             };
+    })(); 
+
+    // Global variables
+    var canvas;
+    var ctx;
+    var width, height;
+
+    /* Initiation of keyboard keys */
+    function initKeys(canvas) {
+        // Make sure the canvas can receive the key events
+        canvas.setAttribute('tabindex','0');
+        canvas.focus();
+
+        // Register the keyDown and keyUp events
+        canvas.addEventListener( "keydown", onKeyDown, true);
+        canvas.addEventListener( "keyup", onKeyUp, true);
+    }
+
+    // keyDown is for save when a key is being pressed or not (polling) 
+    var keyDown = {up:false, down:false, right:false, left:false};
+
+    // keyEvent saves the event.key
+    var keyEvent;
+
+    // Callbacks for discrete key events
+    function onKeyDown(event) {
+        event.preventDefault();
+        
+        keyEvent = event.key
+
+        if (keyEvent == " ") {
+            if (game.currentState == 0) {
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                start();
+            }
+            else if (game.currentState == 1) {
+                game.currentState = 2;
+                run();
+                render();
+            }
+        }
+        // Purpose: to debug
+        // if (keyEvent == "g") {
+        //     // console.log("gameover")
+        //     gameover = true;
+        //     game.end();
+        // }
+
+        // This if, else if puts true the correponding key on keyDown when 
+        // the user presses an arrow.
+        if (event.key == "ArrowUp") {
+            keyDown.up = true
+            turtle.x += 10  * Math.cos(turtle.angle*Math.PI/180) * turtle.gravity
+            turtle.y += 10  * Math.sin(turtle.angle*Math.PI/180) * turtle.gravity
+        }
+        else if(event.key == "ArrowDown"){
+            keyDown.down = true
+            turtle.x -= 10  * Math.cos(turtle.angle*Math.PI/180) * turtle.gravity
+            turtle.y -= 10 * Math.sin(turtle.angle*Math.PI/180) * turtle.gravity
+        }
+        else if(event.key == "ArrowRight"){
+            keyDown.right = true
+            turtle.angle -= 15 
+        }
+        else if(event.key == "ArrowLeft"){
+            keyDown.left = true
+            turtle.angle += 15
+        }    
+
+        render();
+
+    }
+
+    function onKeyUp(event) {
+        // This if, else if puts true the correponding key on keyDown when 
+        // the user presses an arrow.
+        if (event.key == "ArrowUp") {
+            keyDown.up = false
+        }
+        else if(event.key == "ArrowDown"){
+            keyDown.down = false
+        }
+        else if(event.key == "ArrowRight"){keyDown.right = false}
+        else if(event.key == "ArrowLeft"){keyDown.left = false} 
+    }
+
+    // This function action like a polling event that return 
+    // true or false whatever the variable has saved. 
+    function isKeyDown(key){
+        if (key == "ArrowUp") {return keyDown.up}
+        else if(key == "ArrowDown"){return keyDown.down}
+        else if(key == "ArrowRight"){return keyDown.right}
+        else if(key == "ArrowLeft"){return keyDown.left} 
+    }
+
+    // Function for animations
+    function run(){
+        var loop = function() {
+            if (game.currentState != 0) {update();}
+            if (game.currentState != 1 && game.currentState != 0) {render();}
+            window.requestAnimationFrame(loop, canvas);
+        }
+        window.requestAnimationFrame(loop, canvas);
+    }
+
+    // List of obstacles remove
+    var remove_obstacles = [];
+    function update() {
+        // obstacles coordinates update
+        for (var i = 0; i < obstacles.length; i++) {
+            var obst = obstacles[i];
+            obst.x += Math.pow(-1, i) * obst.velocity_x * obst.gravity
+            obst.y += Math.pow(-1, i) * obst.velocity_y * obst.gravity
+
+            // if collision then delete obstacle
+            if(turtle.collision(obst) == true){
+                obst.img = null;
+                remove_obstacles.push(obst);
+                obst.remove(i);
+            }
+        }   
+
+        // If all jellyfish eaten then game over
+        if (jellyfish == 0) {
+            // console.log("gameover")
+            gameover = true;
+            game.end();
+        }
+
+        game.update();
+        if (game.currentState != 1) {render();}
+    }
+
+    function render(){
+        // Reset transform before clearing the canvas
+        ctx.setTransform(1,0,0, 1,0,0)
+        ctx.clearRect(0,0,canvas.width,canvas.height)
+
+        // Drawing the background image
+        ctx.save();
+        ctx.drawImage(background,0,0,800,600,0,0, width,height);
+        ctx.restore();
+
+        // Drawing the turtle on the canvas
+        ctx.save();
+        turtle.draw(ctx);
+        ctx.restore();
+
+
+        // Drawing amount of hearts depending on lives left
+        // if (game.lives == 1) {
+        //     ctx.drawImage(game.heart, 0,0, 568, 506, 0,0, 25,25);
+        // }
+        // else if (game.lives == 2){
+        //     ctx.drawImage(game.heart, 0,0, 568, 506, 0,0, 25,25);
+        //     ctx.drawImage(game.heart, 0,0, 568, 506, 30,0, 25,25);
+        // }
+        // else if(game.lives > 3){
+        //     ctx.drawImage(game.heart, 0,0, 568, 506, 0,0, 25,25);
+        //     ctx.drawImage(game.heart, 0,0, 568, 506, 30,0, 25,25);
+        //     ctx.drawImage(game.heart, 0,0, 568, 506, 60,0, 25,25);
+        // }
+
+        // Updating score and displaying it
+        ctx.save();
+        ctx.font="20px Verdana";
+        ctx.fillStyle = "black";
+        ctx.fillText("Score: ",canvas.width-150,20);
+        ctx.fillText(game.points, canvas.width-80, 20);
+        ctx.restore();
+
+        // Rendering the obstacles
+        for (var i = 0; i < obstacles.length; i++) {
+            var obst = obstacles[i]
+            ctx.save();
+            obst.draw(ctx);
+            ctx.restore();
+        }
+    }
+
+    // Global variables
+    var turtle = new Turtle();
+    var game = new Game();
+    var background = new Image(); 
+    function start(){
+        // Creating canvas and bind it to body
+        canvas = document.getElementById('canvas');
+        ctx = canvas.getContext('2d');
+
+        // width and height of canvas
+        width = canvas.width;
+        height = canvas.height;
+
+        // Loading variables of Game class
+        game.load();
+
+        // The source and the onload function for the turtle image
+        turtle.load();
+
+        
+        // The source and the onload function for the background image
+        ctx.save();
+        background.onload = function() { 
+          ctx.drawImage(background,0,0,800,600,0,0, width,height);  
+        }; 
+        background.src = 'images/ocean1.png';
+        ctx.restore();
+
+        // Creating score 
+        ctx.font="20px Verdana";
+        ctx.fillStyle = "black";
+        ctx.fillText("Score: ",canvas.width-150,20);
+        ctx.fillText(game.points, canvas.width-80, 20);
+
+
+        // Creating random obstacles and loading their images
+        // For level 1
+        for (var i = 0; i < obst_number; i++) {
+            // Giving random coordinates to x and y for each obstacle
+            x = Math.random() * canvas.width;
+            y = Math.random() * canvas.height;
+            n = i % obst_images.length;
+            img = [obst_images[n], obst_images_dimensions[n*2], obst_images_dimensions[n*2+1]]
+            obst = new Obstacle(x, y, img);
+            obstacles.push(obst);
+            obst.load();
+        }
+
+        initKeys(canvas);
+        // render();
+        run();
+    }
+
+</script>
+<h1>Computer Graphics Final Project</h1>
+<h3>Valerie Santiago Gonzalez</h3>
+<body onload="start();">
+    <table><tbody><tr>
+    <td>
+        <table><tbody>
+        <tr><td><canvas id="canvas" width="700" height="500"></canvas></td></tr>
+        <tr id="instructions"><td><span id="text">For the user:</span></td></tr>
+        <tr id="instructions"><td><kbd>Space</kbd> To play</td></tr>
+        <tr id="instructions"><td><kbd>&uarr;</kbd> Move forward</td></tr>
+        <tr id="instructions"><td><kbd>&darr;</kbd> Move backward</td></tr>
+        <tr id="instructions"><td><kbd>&larr;</kbd> and <kbd>&rarr;</kbd> Rotate turtle</td></tr>
+        <tr id="instructions"><td>Purpose: Eat all jellyfish. Try not to get caught in plastic.</td></tr>
+        <tr id="instructions"><td>When all jellyfish eaten, page will be reload to play again.</td></tr>
+        </tbody></table>
+    </td>
+
+</body>
+</html>
